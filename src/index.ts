@@ -1,6 +1,5 @@
 import { CommandClient } from '@pikostudio/command.ts'
 import { Collection } from 'discord.js'
-import { Message } from 'discord.js'
 import { ShardingManager } from 'discord.js'
 import Dokdo from 'dokdo'
 import { Manager } from 'erela.js'
@@ -43,19 +42,33 @@ if (process.env.SHARDING_MANAGER) {
   client.music.on('nodeConnect', (node) => {
     console.log(`Node ${node.options.host}:${node.options.port} connected.`)
   })
-
   client.music.on('nodeError', (node, error) => {
     console.log(
       `Node ${node.options.host}:${node.options.port} encounted an error: ${error.message}`,
     )
   })
-
   client.music.on('queueEnd', (player) => {
     player.destroy()
   })
 
-  client.music.on('nodeRaw', (payload) => {
-    console.log(payload)
+  client.music.on('nodeRaw', async (payload: any) => {
+    const Music = require('./extensions/music').default
+    if (payload.op === 'playerUpdate') {
+      const guild = client.guilds.cache.get(payload.guildId)
+      if (guild) {
+        let m = client.controllerMap.get(guild.id)
+        if (m?.deleted) {
+          client.controllerMap.set(
+            guild.id,
+            await m.channel.send(Music.getNowPlayingEmbed(guild)),
+          )
+          return
+        }
+        if (m) {
+          m.edit(Music.getNowPlayingEmbed(guild))
+        }
+      }
+    }
   })
 
   client.config = config

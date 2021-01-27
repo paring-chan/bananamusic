@@ -1,10 +1,11 @@
 import { Arg, Command, Extension, Listener, Msg } from '@pikostudio/command.ts'
 import { User } from 'discord.js'
+import { Guild } from 'discord.js'
 import { MessageReaction } from 'discord.js'
 import { MessageEmbed } from 'discord.js'
 import { Message } from 'discord.js'
 
-export default class extends Extension {
+export default class Music extends Extension {
   @Command({ name: '재생', aliases: ['play', 'p'] })
   async play(@Msg() msg: Message, @Arg({ rest: true }) query: string) {
     if (!msg.member?.voice.channelID)
@@ -54,7 +55,7 @@ export default class extends Extension {
       const idx = num.indexOf(result.first()!.emoji.name)
       player.queue.add(tracks[idx])
       await m.delete()
-      await msg.reply(`> 곡 \`${tracks[idx].title}\`을(를) 재생할게요!`)
+      await msg.reply(`곡 \`${tracks[idx].title}\`을(를) 재생할게요!`)
       player.connect()
       if (!player.playing) player.play()
     }
@@ -76,6 +77,59 @@ export default class extends Extension {
       return msg.reply('음악을 재생중인 음성채널에 들어가주세요!')
     player.destroy()
     await msg.react('✅')
+  }
+
+  static formatTime(duration: number) {
+    const d = new Date(0)
+    d.setMilliseconds(duration)
+    return d.toISOString().substr(11, 8)
+  }
+
+  static createBar(
+    total: number,
+    current: number,
+    size = 15,
+    line = '▬',
+    slider = '🔘',
+  ) {
+    if (current > total) {
+      const bar = line.repeat(size + 2)
+      const percentage = (current / total) * 100
+      return [bar, percentage]
+    } else {
+      const percentage = current / total
+      const progress = Math.round(size * percentage)
+      const emptyProgress = size - progress
+      const progressText = line.repeat(progress).replace(/.$/, slider)
+      const emptyProgressText = line.repeat(emptyProgress)
+      const bar = progressText + emptyProgressText
+      const calculated = percentage * 100
+      return [bar, calculated]
+    }
+  }
+
+  static getNowPlayingEmbed(guild: Guild): MessageEmbed {
+    const embed = new MessageEmbed()
+    const player = guild.client.music.players.get(guild.id)
+    if (!player || !player.queue.current)
+      embed.setTitle('재생중인 곡이 없네요!')
+    else {
+      const t = player.queue.current
+      embed.setTitle(t.title)
+      embed.setImage(t.displayThumbnail?.('maxresdefault')!)
+      embed.setDescription(
+        `${this.formatTime(player.position)} ${
+          this.createBar(t.duration!, player.position)[0]
+        } -${this.formatTime(t.duration! - player.position)}`,
+      )
+    }
+    return embed
+  }
+
+  @Command({ name: 'np' })
+  async nowPlaying(@Msg() msg: Message) {
+    const m = await msg.channel.send(Music.getNowPlayingEmbed(msg.guild!))
+    this.client.controllerMap.set(msg.guild!.id, m)
   }
 
   @Listener('raw')
