@@ -1,3 +1,11 @@
 {
-    "token": ""
+    "token": "",
+    "prefix": "!",
+    "nodes": [
+        {
+            "host": "",
+            "port": 2333,
+            "password": ""
+        }
+    ]
 }

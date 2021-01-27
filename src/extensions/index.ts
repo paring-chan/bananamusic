@@ -10,7 +10,7 @@ export default class extends Extension {
             noPerm(msg) {
                 msg.react('❌')
             },
-            prefix: '!',
+            prefix: this.client.config.prefix,
         })
     }
 }

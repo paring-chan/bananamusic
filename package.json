@@ -8,6 +8,7 @@
     "@types/node": "^14.14.22",
     "discord.js": "^12.5.1",
     "dokdo": "wonderlandpark/dokdo",
+    "erela.js": "^2.3.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.1.3"
   }
