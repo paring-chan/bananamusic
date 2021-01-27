@@ -18,7 +18,7 @@
 
 "@pikostudio/command.ts@pikokr/command.ts":
   version "1.0.1"
-  resolved "https://codeload.github.com/pikokr/command.ts/tar.gz/4f7abbcaef9ee482872988089d3d259dc15d23ff"
+  resolved "https://codeload.github.com/pikokr/command.ts/tar.gz/6523bf3784d25f7a22cae35a3dd85421bcbfd8f0"
   dependencies:
     "@types/chokidar" "^2.1.3"
     "@types/node" "^14.14.22"

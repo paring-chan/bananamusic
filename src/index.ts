@@ -50,12 +50,17 @@ if (process.env.SHARDING_MANAGER) {
     )
   })
 
+  client.music.on('queueEnd', (player) => {
+    player.destroy()
+  })
+
   client.music.on('nodeRaw', (payload) => {
     console.log(payload)
   })
 
   client.config = config
   client.loadExtensions('extensions/index')
+  client.loadExtensions('extensions/owner')
   client.loadExtensions('extensions/music')
   client.login(config.token)
 } else {

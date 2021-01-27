@@ -16,5 +16,3 @@ export default class extends Extension {
     this.client.music.init(this.client.user?.id)
   }
 }
-
-export { default as Owner } from './owner'
