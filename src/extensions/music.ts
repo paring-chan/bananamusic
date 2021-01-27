@@ -3,7 +3,6 @@ import { User } from 'discord.js'
 import { MessageReaction } from 'discord.js'
 import { MessageEmbed } from 'discord.js'
 import { Message } from 'discord.js'
-import { rawListeners } from 'process'
 
 export default class extends Extension {
   @Command({ name: '재생', aliases: ['play', 'p'] })
@@ -18,7 +17,8 @@ export default class extends Extension {
         textChannel: msg.channel.id,
         voiceChannel: msg.member.voice.channelID,
       })
-    if (player.voiceChannel !== msg.member.voice.channelID) return msg.reply('')
+    if (player.voiceChannel !== msg.member.voice.channelID)
+      return msg.reply('음악을 재생중인 음성채널에 들어가주세요!')
     if (!query) return msg.reply(`${this.client.config.prefix}재생 <곡 제목>`)
     const res = await this.client.music.search(query, msg.author)
     if (res.loadType === 'NO_MATCHES') {
@@ -58,6 +58,24 @@ export default class extends Extension {
       player.connect()
       if (!player.playing) player.play()
     }
+  }
+
+  @Command({ name: '정지', aliases: ['stop'] })
+  async stop(@Msg() msg: Message) {
+    if (!msg.member?.voice.channelID)
+      return msg.reply('음성 채널에 들어가주세요')
+    const player =
+      this.client.music.players.get(msg.guild!.id) ??
+      this.client.music.create({
+        selfDeafen: true,
+        guild: msg.guild!.id,
+        textChannel: msg.channel.id,
+        voiceChannel: msg.member.voice.channelID,
+      })
+    if (player.voiceChannel !== msg.member.voice.channelID)
+      return msg.reply('음악을 재생중인 음성채널에 들어가주세요!')
+    player.destroy()
+    await msg.react('✅')
   }
 
   @Listener('raw')
