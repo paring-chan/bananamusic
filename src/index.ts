@@ -33,7 +33,8 @@ if (process.env.SHARDING_MANAGER) {
         send: (id, payload) => {
             const guild = client.guilds.cache.get(id)
             if (guild) guild.shard.send(payload)
-        }
+        },
+        nodes: config.nodes
     })
 
     client.music.on('nodeConnect', node => {
@@ -50,6 +51,7 @@ if (process.env.SHARDING_MANAGER) {
 
     client.config = config
     client.loadExtensions('extensions/index')
+    client.loadExtensions('extensions/music')
     client.login(config.token)
 } else {
     const manager = new ShardingManager(__filename, {

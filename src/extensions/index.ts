@@ -12,6 +12,8 @@ export default class extends Extension {
             },
             prefix: this.client.config.prefix,
         })
+
+        this.client.music.init(this.client.user?.id)
     }
 }
 
