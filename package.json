@@ -1,0 +1,14 @@
+{
+  "name": "bananamusic",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@pikostudio/command.ts": "pikokr/command.ts",
+    "@types/node": "^14.14.22",
+    "discord.js": "^12.5.1",
+    "dokdo": "wonderlandpark/dokdo",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
+  }
+}
