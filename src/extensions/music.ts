@@ -5,6 +5,12 @@ import { MessageReaction } from 'discord.js'
 import { MessageEmbed } from 'discord.js'
 import { Message } from 'discord.js'
 
+declare module 'discord.js' {
+  interface Guild {
+    selectedTrack: number
+  }
+}
+
 export default class Music extends Extension {
   @Command({ name: '재생', aliases: ['play', 'p'] })
   async play(@Msg() msg: Message, @Arg({ rest: true }) query: string) {
@@ -79,6 +85,28 @@ export default class Music extends Extension {
     await msg.react('✅')
   }
 
+  @Command({ name: 'volume', aliases: ['볼륨'] })
+  async volume(@Msg() msg: Message, @Arg() vol: string) {
+    if (!msg.member?.voice.channelID)
+      return msg.reply('음성 채널에 들어가주세요')
+    const player =
+      this.client.music.players.get(msg.guild!.id) ??
+      this.client.music.create({
+        selfDeafen: true,
+        guild: msg.guild!.id,
+        textChannel: msg.channel.id,
+        voiceChannel: msg.member.voice.channelID,
+      })
+    if (player.voiceChannel !== msg.member.voice.channelID)
+      return msg.reply('음악을 재생중인 음성채널에 들어가주세요!')
+    let volume = Number(vol)
+    if (isNaN(volume) || volume > 1000 || volume < 1) {
+      return msg.reply(`${this.client.config.prefix}볼륨 <1-1000>`)
+    }
+    player.setVolume(volume)
+    await msg.react('✅')
+  }
+
   static formatTime(duration: number) {
     const d = new Date(0)
     d.setMilliseconds(duration)
@@ -115,21 +143,108 @@ export default class Music extends Extension {
       embed.setTitle('재생중인 곡이 없네요!')
     else {
       const t = player.queue.current
-      embed.setTitle(t.title)
-      embed.setImage(t.displayThumbnail?.('maxresdefault')!)
+      embed.setTitle(
+        `${player.playing ? ':arrow_forward:' : ':pause_button:'} ${t.title}`,
+      )
+      embed.setThumbnail(t.displayThumbnail?.('maxresdefault')!)
       embed.setDescription(
         `${this.formatTime(player.position)} ${
           this.createBar(t.duration!, player.position)[0]
         } -${this.formatTime(t.duration! - player.position)}`,
       )
+      embed.addFields([
+        {
+          name: '볼륨',
+          value: player.volume + '%',
+          inline: true,
+        },
+        {
+          name: '반복 모드',
+          value: player.queueRepeat
+            ? '대기열 전체 반복'
+            : player.trackRepeat
+            ? '현재 곡 반복'
+            : '반복 안함',
+          inline: true,
+        },
+      ])
+      embed.setFooter(
+        (t.requester as any).tag,
+        (t.requester as any).displayAvatarURL({ dynamic: true }),
+      )
     }
     return embed
   }
 
+  static async initController(msg: Message) {
+    if ((msg as any).controllerInitialized) return
+    msg.guild!.selectedTrack = 0
+    const emojis = ['⏯️', '⏹️', '▶️', '🔄', '➕', '➖']
+
+    ;(msg as any).controllerInitialized = true
+
+    await Promise.all(emojis.map((r) => msg.react(r)))
+  }
+
   @Command({ name: 'np' })
   async nowPlaying(@Msg() msg: Message) {
+    if (!msg.guild) return
     const m = await msg.channel.send(Music.getNowPlayingEmbed(msg.guild!))
-    this.client.controllerMap.set(msg.guild!.id, m)
+    if (this.client.controllerMap.get(msg.guild.id))
+      await this.client.controllerMap.get(msg.guild.id)?.delete()
+    this.client.controllerMap.set(msg.guild.id, m)
+    // let loop: NodeJS.Timeout
+    // const fn = () => {
+    //   m.edit(Music.getNowPlayingEmbed(msg.guild!))
+    //     .then(() => {
+    //       return setTimeout(fn, 1000)
+    //     })
+    //     .catch(() => clearInterval(loop))
+    // }
+    // loop = setTimeout(fn, 1000)
+    await Music.initController(m)
+  }
+
+  @Listener('messageReactionAdd')
+  async messageReactionAdd(reaction: MessageReaction, user: User) {
+    if (reaction.message.author.id === user.id) return
+    const guild = reaction.message.guild
+    if (!guild) return
+    const player = this.client.music.players.get(guild.id)
+    if (!player) return
+    const m = this.client.controllerMap.get(guild.id)
+    if (m?.id === reaction.message.id) {
+      reaction.users.remove(user)
+      if (
+        player.voiceChannel !==
+        guild.members.cache.get(user.id)?.voice.channelID
+      )
+        return
+
+      if (reaction.emoji.name === '⏯️') {
+        if (!player.paused) player.pause(true)
+        else player.pause(false)
+      }
+      if (reaction.emoji.name === '⏹️') {
+        player.destroy()
+      }
+      if (reaction.emoji.name === '▶️') {
+        player.stop()
+      }
+      if (reaction.emoji.name === '🔄') {
+        if (player.queueRepeat) return player.setQueueRepeat(false)
+        if (player.trackRepeat) return player.setQueueRepeat(true)
+        player.setTrackRepeat(true)
+      }
+      if (reaction.emoji.name === '➕') {
+        if (player.volume > 1000) return
+        player.setVolume(player.volume + 5)
+      }
+      if (reaction.emoji.name === '➖') {
+        if (player.volume < 0) return
+        player.setVolume(player.volume - 5)
+      }
+    }
   }
 
   @Listener('raw')

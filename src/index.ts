@@ -3,6 +3,7 @@ import { Collection } from 'discord.js'
 import { ShardingManager } from 'discord.js'
 import Dokdo from 'dokdo'
 import { Manager } from 'erela.js'
+import MusicExt from './extensions/music'
 
 const config = require('../config.json')
 
@@ -52,7 +53,7 @@ if (process.env.SHARDING_MANAGER) {
   })
 
   client.music.on('nodeRaw', async (payload: any) => {
-    const Music = require('./extensions/music').default
+    const Music = require('./extensions/music')?.default ?? MusicExt
     if (payload.op === 'playerUpdate') {
       const guild = client.guilds.cache.get(payload.guildId)
       if (guild) {
@@ -60,12 +61,20 @@ if (process.env.SHARDING_MANAGER) {
         if (m?.deleted) {
           client.controllerMap.set(
             guild.id,
-            await m.channel.send(Music.getNowPlayingEmbed(guild)),
+            await m.channel.send(Music.getNowPlayingEmbed(guild)).then((r) => {
+              Music.initController(r)
+              return r
+            }),
           )
           return
         }
         if (m) {
-          m.edit(Music.getNowPlayingEmbed(guild))
+          m.edit(Music.getNowPlayingEmbed(guild)).catch(async () => {
+            const msg = await m?.channel.send(Music.getNowPlayingEmbed(guild))!
+            client.controllerMap.set(guild.id, msg)
+            await Music.initController(msg)
+            return
+          })
         }
       }
     }
